@@ -3,6 +3,49 @@ import os
 import traceback
 
 
+# ====================== BEAM DATA STRUCTURE ======================
+class Beam:
+    """
+    Fixed-capacity Beam data structure for Local Beam Search.
+    Implements insert operation with appropriate messages when capacity is full or empty.
+    This satisfies the assignment requirement for data structure capacity handling.
+    """
+    def __init__(self, max_size=2):
+        """Initialize the Beam with a specified maximum size (capacity) and an empty list to hold the states. """
+        self.max_size = max_size
+        self.states = []
+
+    def is_full(self):
+        """Check if the beam is full by comparing the length of the states list to the maximum size."""
+        return len(self.states) >= self.max_size
+
+    def is_empty(self):
+        """Check if the beam is empty by checking if the length of the states list is zero."""
+        return len(self.states) == 0
+
+    def insert(self, state):
+        """Insert state. Shows message if beam capacity is full."""
+        if self.is_full():
+            print("[BEAM CAPACITY] Beam is FULL (max capacity = {}). Cannot insert more states.".format(self.max_size))
+            return False
+        self.states.append(state)
+        return True
+
+    def get_states(self):
+        """Return the current list of states in the beam."""
+        return self.states
+
+    def set_states(self, new_states):
+        """Replace beam with new top-k states (enforces capacity)."""
+        if len(new_states) > self.max_size:
+            print("[BEAM CAPACITY] Warning: Truncating to max capacity {}".format(self.max_size))
+        self.states = new_states[:self.max_size]
+
+    def __len__(self):
+        """Return the current number of states in the beam."""
+        return len(self.states)
+
+
 def read_input(file_path):
     """
     Reads the input grid file.
@@ -119,25 +162,27 @@ def local_beam_search(rows, cols, start, goal, grid, k=2):
     log("=" * 70)
     log("")
 
-    current_beam = [(start, 0, [start])]  # List of (position, g_cost, path_list)
+    beam = Beam(max_size=k)
+    beam.insert((start, 0, [start]))
     iteration = 0
     max_iter = rows * cols * 2  # Safety limit proportional to grid size
 
-    while current_beam and iteration < max_iter:
+    while not beam.is_empty() and iteration < max_iter:
         log("")
         log("=" * 60)
         log("ITERATION {}".format(iteration))
         log("=" * 60)
 
+        current_states = beam.get_states()
         # Display current beam states with h and g
         log("")
         log("[SELECTED BEAM STATES] (k={} best so far):".format(k))
-        for (r, c), g, path in current_beam:
+        for (r, c), g, path in current_states:
             h = manhattan(r, c, goal)
             log("  ({},{}) | h={:2d} | g={:2d} | path_len={}".format(r, c, h, g, len(path)))
 
         # Check if goal reached in current beam
-        for (r, c), g, path in current_beam:
+        for (r, c), g, path in current_states:
             if (r, c) == goal:
                 log("")
                 log("*** GOAL REACHED in beam ***")
@@ -148,7 +193,7 @@ def local_beam_search(rows, cols, start, goal, grid, k=2):
         log("[GENERATING SUCCESSORS from current beam]:")
         candidates = []
         directions = [(-1, 0, "Up"), (1, 0, "Down"), (0, -1, "Left"), (0, 1, "Right")]
-        for (r, c), g, path in current_beam:
+        for (r, c), g, path in current_states:
             visited_in_path = set(path)  # Avoid revisiting cells already in this path
             successors_for_state = []
             for dr, dc, dname in directions:
@@ -192,17 +237,43 @@ def local_beam_search(rows, cols, start, goal, grid, k=2):
         # Select best k states
         log("")
         log("[SELECTING TOP {} BEAM STATES by min h then min g]:".format(k))
-        current_beam = candidate_list[:k]
-        for i, ((r, c), g, _) in enumerate(current_beam):
+        beam.set_states(candidate_list[:k])
+        for i, ((r, c), g, _) in enumerate(beam.get_states()):
             h = manhattan(r, c, goal)
             log("  #{}: ({},{}) | h={:2d} | g={:2d}".format(i + 1, r, c, h, g))
 
         iteration += 1
-    
-    if iteration >= max_iter:                              # If the maximum number of iterations is reached without finding a solution, print a message indicating that the search has reached its limit and return None to indicate that no solution was found, which helps to prevent infinite loops in case of bugs or if the search space is too large to explore within a reasonable time frame.
-        print("Max iterations reached - possible loop or no path.")
-        pass
-    return None, None
+
+    if iteration >= max_iter:
+        log("")
+        log("Max iterations reached ({}) - possible loop or no path.".format(max_iter))
+    return None, None, log_lines
+
+
+def write_output(output_file, log_lines, path, total_cost):
+    """
+    Writes the full execution trace and final results to the output file.
+    Includes: selected beam states, heuristic values, traversal costs,
+    final path, total path cost, and total optimized traversal cost.
+    """
+    with open(output_file, "w") as f:
+        # Write full iteration-by-iteration trace
+        for line in log_lines:
+            f.write(line + "\n")
+
+        f.write("\n" + "=" * 70 + "\n")
+        f.write("FINAL RESULT\n")
+        f.write("=" * 70 + "\n")
+
+        if path:
+            path_str = " -> ".join(["({},{})".format(r, c) for r, c in path])
+            f.write("Final Path from Start to Goal:\n{}\n".format(path_str))
+            f.write("Total Path Cost (number of steps): {}\n".format(len(path) - 1))
+            f.write("Total Optimized Traversal Cost: {}\n".format(total_cost))
+        else:
+            f.write("No solution found.\n")
+
+        f.write("=" * 70 + "\n")
 
 
 # ====================== MAIN ======================
@@ -210,8 +281,12 @@ def local_beam_search(rows, cols, start, goal, grid, k=2):
 # displays and writes all required output, with full error handling.
 if __name__ == "__main__":
     try:
-        input_file = "input/inputPS11.txt"
-        output_file = "output/outputPS11.txt"
+        # Determine file paths relative to this script's location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_dir = os.path.dirname(script_dir)
+
+        input_file = os.path.join(project_dir, "input", "inputPS11.txt")
+        output_file = os.path.join(project_dir, "output", "outputPS11.txt")
 
         print("=" * 70)
         print("FILE PATHS USED:")
@@ -231,32 +306,24 @@ if __name__ == "__main__":
             path_str = " -> ".join(["({},{})".format(r, c) for r, c in path])
             print("\n" + "=" * 70)
             print("FINAL RESULT")
-            print("="*70)
-            print(f"Final Path : {path_str}")
-            print(f"Total Cost : {total_cost}")
-            print("="*70)
+            print("=" * 70)
+            print("Final Path          : {}".format(path_str))
+            print("Total Path Cost     : {} steps".format(len(path) - 1))
+            print("Total Traversal Cost: {}".format(total_cost))
+            print("=" * 70)
 
-            # Write the final path and total cost to the output file for documentation and further analysis.
-            # This step ensures that the results of the local beam search are saved in a structured format for future reference or grading purposes.
-            with open(output_file, "w") as f:
-                f.write("=" * 70 + "\n")
-                f.write("FINAL RESULT\n")
-                f.write("=" * 70 + "\n")
-                f.write(f"Final Path from Start to Goal:\n{path_str}\n")
-                f.write(f"Total Path Cost: {total_cost}\n")
-                f.write("=" * 70 + "\n")
-            print(f"\nOutput written to: {output_file}")
+            write_output(output_file, log_lines, path, total_cost)
+            print("\nOutput written to: {}".format(output_file))
         else:
-            print("No solution found.")
-            pass
+            print("\nNo solution found.")
+            write_output(output_file, log_lines, None, None)
+            print("Output written to: {}".format(output_file))
 
     except FileNotFoundError as e:
-        print("\n ERROR OCCURRED!")
-        print(f"Error: Input file not found - {e}")
+        print("\nFILE ERROR: {}".format(e))
         traceback.print_exc()
     except ValueError as e:
-        print("\n ERROR OCCURRED!")
-        print(f"Error: Invalid input format - {e}")
+        print("\nINPUT ERROR: {}".format(e))
         traceback.print_exc()
     except Exception as e:
         print("\nUNEXPECTED ERROR: {}".format(e))
