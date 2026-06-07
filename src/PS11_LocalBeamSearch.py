@@ -153,6 +153,7 @@ def local_beam_search(rows, cols, start, goal, grid, k=2):
     
     if iteration >= max_iter:                              # If the maximum number of iterations is reached without finding a solution, print a message indicating that the search has reached its limit and return None to indicate that no solution was found, which helps to prevent infinite loops in case of bugs or if the search space is too large to explore within a reasonable time frame.
         print("Max iterations reached - possible loop or no path.")
+        pass
     return None, None
 
 
@@ -161,10 +162,8 @@ def local_beam_search(rows, cols, start, goal, grid, k=2):
 # It includes error handling to catch and display any exceptions that may occur during execution.
 if __name__ == "__main__":
     try:
-        #input_file = "D:\\Ree_Learning\\SEM_2\\ACI\\ACI_Assignment1\\input\\inputPS11.txt"
-        input_file = "/home/cloud/Downloads/ACI_Assignment1/input/inputPS11.txt"
-        
-        output_file = "/home/cloud/Downloads/ACI_Assignment1/output/outputPS11.txt"
+        input_file = "input/inputPS11.txt"
+        output_file = "output/outputPS11.txt"
 
         print("=" * 70)
         print("FILE PATHS USED:")
@@ -194,25 +193,24 @@ if __name__ == "__main__":
             # This step ensures that the results of the local beam search are saved in a structured format for future reference or grading purposes.
             with open(output_file, "w") as f:
                 f.write("=" * 70 + "\n")
-                f.write("DISPLAY: SELECTED BEAM STATES, HEURISTIC VALUES, TRAVERSAL COSTS\n")
-                f.write("=" * 70 + "\n")
-                f.write("Note: Full execution trace (all iterations, successors, dedup, beam selection) is shown in console output for screenshots.\n")
-                f.write("Below is a compact summary of key beam states (h = heuristic/Manhattan, g = traversal cost).\n\n")
-                f.write("Iteration 0: Beam [(0,0) h=8 g=0]\n")
-                f.write("Iteration 1: Beam [(2,0) h=6 g=2, (0,2) h=6 g=4]\n")
-                f.write("Iteration 2-6 (progress): Beam moves toward goal, pruning higher h/g states; key states include (4,2) h=2 g=8, (3,1) h=4 g=8, (4,3) h=1 g=11\n")
-                f.write("Iteration 7: Beam includes (4,4) h=0 g=12 (goal reached)\n\n")
-                f.write("=" * 70 + "\n")
                 f.write("FINAL RESULT\n")
                 f.write("=" * 70 + "\n")
                 f.write(f"Final Path from Start to Goal:\n{path_str}\n")
                 f.write(f"Total Path Cost: {total_cost}\n")
-                f.write(f"Total Optimized Traversal Cost: {total_cost}\n")
                 f.write("=" * 70 + "\n")
             print(f"\nOutput written to: {output_file}")
         else:
             print("No solution found.")
+            pass
 
+    except FileNotFoundError as e:
+        print("\n ERROR OCCURRED!")
+        print(f"Error: Input file not found - {e}")
+        traceback.print_exc()
+    except ValueError as e:
+        print("\n ERROR OCCURRED!")
+        print(f"Error: Invalid input format - {e}")
+        traceback.print_exc()
     except Exception as e:
         print("\n ERROR OCCURRED!")
         print(f"Error: {e}")
