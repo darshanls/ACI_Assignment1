@@ -11,12 +11,13 @@
 python>=3.8
 
 # -------------------------- Dependencies ---------------------------------------
-# This project uses ONLY Python Standard Library.
-# No external/third-party packages are required.
+# openpyxl      : For creating Excel contribution file (required for submission)
+# This is the only external package needed.
 
 # Standard Libraries Used:
 # - sys          : For command-line argument handling and file paths
 # - traceback    : For detailed error reporting and debugging
+# - os           : For file path operations
 
 # -------------------------- Notes ----------------------------------------------
 # This assignment strictly follows the requirement of using only built-in Python
